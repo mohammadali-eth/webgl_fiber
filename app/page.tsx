@@ -19,8 +19,16 @@ export default function Home() {
       {/* 3D Canvas Layer */}
       <Canvas
         shadows
-        camera={{ position: [0, 6, 26], fov: 45, near: 0.1, far: 1000 }}
-        gl={{ antialias: true, alpha: false, powerPreference: "high-performance" }}
+        dpr={[1, 1.5]}
+        performance={{ min: 0.5 }}
+        camera={{ position: [0, 4.2, 22], fov: 42, near: 0.1, far: 150 }}
+        gl={{
+          antialias: true,
+          alpha: false,
+          powerPreference: "high-performance",
+          stencil: false,
+          depth: true,
+        }}
         className="w-full h-full cursor-grab active:cursor-grabbing"
       >
         <Suspense fallback={null}>

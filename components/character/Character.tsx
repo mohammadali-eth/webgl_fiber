@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useMemo, useEffect } from "react";
+import React, { useRef, useMemo } from "react";
 import { useGLTF } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
@@ -18,7 +18,7 @@ export function Character() {
   const setCurrentWaypointIndex = usePortfolioStore((state) => state.setCurrentWaypointIndex);
   const setActivePanel = usePortfolioStore((state) => state.setActivePanel);
 
-  // Clone character scene
+  // Clone character model cleanly
   const clonedScene = useMemo(() => {
     const clone = scene.clone(true);
     clone.traverse((child) => {
@@ -31,92 +31,93 @@ export function Character() {
     return clone;
   }, [scene]);
 
-  // Create smooth Catmull-Rom route spline through village waypoints
+  // Pre-calculate smooth Catmull-Rom route spline through village waypoints
   const routeCurve = useMemo(() => {
     const points = VILLAGE_ROUTE.map((wp) => new THREE.Vector3(...wp.position));
     return new THREE.CatmullRomCurve3(points, false, "centripetal", 0.5);
   }, []);
 
-  // Internal state tracking for physics & smooth rotation
+  // Persistent reusable vector objects for zero-allocation useFrame render loop
   const currentPos = useRef<THREE.Vector3>(new THREE.Vector3(...VILLAGE_ROUTE[0].position));
   const targetPos = useRef<THREE.Vector3>(new THREE.Vector3(...VILLAGE_ROUTE[0].position));
-  const currentYaw = useRef<number>(0);
+  const prevPos = useRef<THREE.Vector3>(new THREE.Vector3(...VILLAGE_ROUTE[0].position));
+  const tangentVec = useRef<THREE.Vector3>(new THREE.Vector3(0, 0, -1));
+  const lookAtDir = useRef<THREE.Vector3>(new THREE.Vector3());
 
-  // Target scroll progress lerper for super smooth continuous movement
+  const currentYaw = useRef<number>(0);
   const smoothProgress = useRef<number>(0);
+  const lastActiveWpIndex = useRef<number>(-1);
+  const lastIsWalking = useRef<boolean>(false);
 
   useFrame((state, delta) => {
     if (!groupRef.current) return;
 
-    // Smoothly interpolate progress
+    // Smoothly interpolate progress along route
     smoothProgress.current = THREE.MathUtils.lerp(smoothProgress.current, scrollProgress, Math.min(delta * 6, 1));
-
     const t = Math.max(0, Math.min(1, smoothProgress.current));
 
-    // Get point on route curve
+    // Get point and tangent on route curve
     routeCurve.getPointAt(t, targetPos.current);
+    routeCurve.getTangentAt(t, tangentVec.current);
+    tangentVec.current.normalize();
 
-    // Calculate tangent direction for movement vector
-    const tangent = routeCurve.getTangentAt(t).normalize();
-
-    // Determine distance moved in this frame
-    const prevPos = currentPos.current.clone();
+    // Movement calculation
+    prevPos.current.copy(currentPos.current);
     currentPos.current.lerp(targetPos.current, Math.min(delta * 8, 1));
 
-    const speed = prevPos.distanceTo(currentPos.current) / Math.max(delta, 0.001);
-    const isWalking = speed > 0.05;
+    const distMoved = prevPos.current.distanceTo(currentPos.current);
+    const speed = distMoved / Math.max(delta, 0.001);
+    const isWalking = speed > 0.04;
 
-    // Target yaw angle based on tangent vector (or target lookAt at waypoint stops)
-    let targetYaw = Math.atan2(tangent.x, tangent.z);
-
-    // Check closest waypoint destination
+    // Determine nearest waypoint
     let activeWpIndex = 0;
     let minWpDist = Infinity;
-    VILLAGE_ROUTE.forEach((wp, idx) => {
-      const wpPos = new THREE.Vector3(...wp.position);
-      const d = currentPos.current.distanceTo(wpPos);
+    for (let i = 0; i < VILLAGE_ROUTE.length; i++) {
+      const wp = VILLAGE_ROUTE[i];
+      const d = Math.hypot(
+        currentPos.current.x - wp.position[0],
+        currentPos.current.z - wp.position[2]
+      );
       if (d < minWpDist) {
         minWpDist = d;
-        activeWpIndex = idx;
+        activeWpIndex = i;
       }
-    });
+    }
 
     const currentWp = VILLAGE_ROUTE[activeWpIndex];
 
-    // If character is very close to a waypoint and stopped, orient toward waypoint lookAt
+    // Determine target yaw angle
+    let targetYaw = Math.atan2(tangentVec.current.x, tangentVec.current.z);
+
     if (!isWalking && currentWp.lookAt && minWpDist < 2.5) {
-      const lookAtVec = new THREE.Vector3(...currentWp.lookAt);
-      const dir = lookAtVec.sub(currentPos.current);
-      targetYaw = Math.atan2(dir.x, dir.z);
+      lookAtDir.current.set(
+        currentWp.lookAt[0] - currentPos.current.x,
+        0,
+        currentWp.lookAt[2] - currentPos.current.z
+      );
+      targetYaw = Math.atan2(lookAtDir.current.x, lookAtDir.current.z);
     }
 
-    // Smooth angle interpolation (handling -PI to +PI wrap)
+    // Smooth angle interpolation
     let angleDiff = targetYaw - currentYaw.current;
     while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
     while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-
     currentYaw.current += angleDiff * Math.min(delta * 7, 1);
 
-    // Apply root position & yaw rotation
+    // Apply root position & orientation
     groupRef.current.position.copy(currentPos.current);
     groupRef.current.rotation.y = currentYaw.current;
 
-    // Procedural walk & idle animation on sub-mesh group
+    // Procedural walk & idle animation on sub-mesh
     const clockTime = state.clock.getElapsedTime();
     if (meshGroupRef.current) {
       if (isWalking) {
-        // Walk bounce (vertical oscillation)
         const bounceY = Math.abs(Math.sin(clockTime * 14)) * 0.12;
-        // Roll sway
         const rollZ = Math.sin(clockTime * 7) * 0.05;
-        // Forward tilt
-        const pitchX = 0.04;
-
         meshGroupRef.current.position.y = bounceY;
         meshGroupRef.current.rotation.z = rollZ;
-        meshGroupRef.current.rotation.x = pitchX;
+        meshGroupRef.current.rotation.x = 0.04;
       } else {
-        // Idle breathing oscillation
         const breathY = Math.sin(clockTime * 2.5) * 0.03;
         meshGroupRef.current.position.y = breathY;
         meshGroupRef.current.rotation.z = THREE.MathUtils.lerp(meshGroupRef.current.rotation.z, 0, delta * 5);
@@ -124,28 +125,32 @@ export function Character() {
       }
     }
 
-    // Update global store state
-    setCharacterState(
-      [currentPos.current.x, currentPos.current.y, currentPos.current.z],
-      currentYaw.current,
-      isWalking
-    );
+    // State Synchronization Throttled (ONLY update Zustand when waypoint or walk state changes)
+    if (activeWpIndex !== lastActiveWpIndex.current || isWalking !== lastIsWalking.current) {
+      lastActiveWpIndex.current = activeWpIndex;
+      lastIsWalking.current = isWalking;
 
-    setCurrentWaypointIndex(activeWpIndex);
-    setActiveDestination(currentWp);
+      setCurrentWaypointIndex(activeWpIndex);
+      setActiveDestination(currentWp);
+      setCharacterState(
+        [currentPos.current.x, currentPos.current.y, currentPos.current.z],
+        currentYaw.current,
+        isWalking
+      );
 
-    // Trigger overlay panel when at House 1 ("about")
-    if (currentWp.sectionId === "about" && minWpDist < 2.0 && !isWalking) {
-      setActivePanel("about");
-    } else if (isWalking && minWpDist > 3.0) {
-      // Close panel when walking away
-      setActivePanel(null);
+      // Trigger overlay modal when at House 1 ("about")
+      if (currentWp.sectionId === "about" && minWpDist < 2.0 && !isWalking) {
+        setActivePanel("about");
+      } else if (isWalking && minWpDist > 3.0) {
+        setActivePanel(null);
+      }
     }
   });
 
   return (
     <group ref={groupRef} position={VILLAGE_ROUTE[0].position}>
-      <group ref={meshGroupRef} scale={[0.045, 0.045, 0.045]}>
+      {/* Human scale calibration [0.055, 0.055, 0.055] */}
+      <group ref={meshGroupRef} scale={[0.055, 0.055, 0.055]}>
         <primitive object={clonedScene} />
       </group>
     </group>

@@ -1,43 +1,40 @@
 "use client";
 
 import React from "react";
+import { usePortfolioStore } from "@/store/usePortfolioStore";
 
 export function Lighting() {
+  const qualityLevel = usePortfolioStore((state) => state.qualityLevel);
+  const shadowMapSize = qualityLevel === "high" ? 2048 : 1024;
+
   return (
     <>
-      {/* Soft anime atmospheric ambient light */}
-      <ambientLight intensity={0.8} color="#e0f2fe" />
+      {/* Bright Sky Background Light (Hemisphere: Sky / Ground) */}
+      <hemisphereLight color="#e2f1ff" groundColor="#452a12" intensity={1.1} />
 
-      {/* Main directional sun light */}
+      {/* Main Warm Sunlight - Crisp & Vibrant */}
       <directionalLight
-        position={[30, 45, 20]}
-        intensity={1.8}
-        color="#fffbeb"
-        castShadow
-        shadow-mapSize-width={2048}
-        shadow-mapSize-height={2048}
-        shadow-camera-near={0.5}
+        position={[35, 50, 25]}
+        intensity={2.2}
+        color="#ffffff"
+        castShadow={qualityLevel !== "low"}
+        shadow-mapSize-width={shadowMapSize}
+        shadow-mapSize-height={shadowMapSize}
+        shadow-camera-near={1.0}
         shadow-camera-far={120}
-        shadow-camera-left={-35}
-        shadow-camera-right={35}
-        shadow-camera-top={35}
-        shadow-camera-bottom={-35}
-        shadow-bias={-0.0005}
+        shadow-camera-left={-30}
+        shadow-camera-right={30}
+        shadow-camera-top={30}
+        shadow-camera-bottom={-30}
+        shadow-bias={-0.0003}
       />
 
-      {/* Secondary fill light for soft shadows */}
-      <directionalLight position={[-20, 25, -20]} intensity={0.5} color="#cbd5e1" />
+      {/* Soft secondary fill light for vibrant shadow detail */}
+      <directionalLight position={[-25, 30, -25]} intensity={0.7} color="#fef08a" />
 
-      {/* Sky & Ground Hemisphere Light */}
-      <hemisphereLight color="#bae6fd" groundColor="#334155" intensity={0.7} />
-
-      {/* Subtle warm house entrance lights */}
-      {/* House 1: About Cottage */}
-      <pointLight position={[-11, 3, 2]} intensity={2.5} color="#fda4af" distance={12} decay={2} />
-      {/* House 2: Skills Workshop */}
-      <pointLight position={[10, 3, -2]} intensity={2.5} color="#38bdf8" distance={12} decay={2} />
-      {/* House 3: Projects Atelier */}
-      <pointLight position={[-8, 3, -11]} intensity={2.5} color="#a78bfa" distance={12} decay={2} />
+      {/* Subtle warm house entrance accent lights */}
+      <pointLight position={[-11, 2.8, 2]} intensity={2.0} color="#fda4af" distance={12} decay={2} />
+      <pointLight position={[10, 2.8, -2]} intensity={2.0} color="#38bdf8" distance={12} decay={2} />
     </>
   );
 }

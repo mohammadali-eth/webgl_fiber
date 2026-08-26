@@ -10,44 +10,51 @@ export function CameraController() {
   const characterRotation = usePortfolioStore((state) => state.characterRotation);
   const isCharacterWalking = usePortfolioStore((state) => state.isCharacterWalking);
   const activeDestination = usePortfolioStore((state) => state.activeDestination);
+  const scrollProgress = usePortfolioStore((state) => state.scrollProgress);
 
-  const currentCamPos = useRef<THREE.Vector3>(new THREE.Vector3(0, 6, 26));
-  const currentLookAt = useRef<THREE.Vector3>(new THREE.Vector3(0, 1.5, 12));
+  // Reusable vector refs for zero allocations in render loop
+  const currentCamPos = useRef<THREE.Vector3>(new THREE.Vector3(0, 24, 32));
+  const currentLookAt = useRef<THREE.Vector3>(new THREE.Vector3(0, 3, 0));
 
   const targetCamPos = useRef<THREE.Vector3>(new THREE.Vector3());
   const targetLookAt = useRef<THREE.Vector3>(new THREE.Vector3());
+  const charPosVec = useRef<THREE.Vector3>(new THREE.Vector3());
 
   useFrame((state, delta) => {
-    const charPosVec = new THREE.Vector3(...characterPosition);
+    charPosVec.current.set(...characterPosition);
 
-    // If character is stopped near a destination with explicit camera framing:
-    if (!isCharacterWalking && activeDestination && activeDestination.cameraPosition && activeDestination.cameraTarget) {
+    // Initial Establishing Overview Camera at Intro (progress < 0.05)
+    if (scrollProgress < 0.05) {
+      targetCamPos.current.set(0, 22, 30);
+      targetLookAt.current.set(0, 4, 0);
+    } 
+    // Focused House View when stationary at a destination
+    else if (!isCharacterWalking && activeDestination && activeDestination.cameraPosition && activeDestination.cameraTarget) {
       targetCamPos.current.set(...activeDestination.cameraPosition);
       targetLookAt.current.set(...activeDestination.cameraTarget);
-    } else {
-      // Third-person cinematic follow mode during walking
-      // Offset behind character relative to character yaw
-      const distanceBehind = 7.5;
-      const heightAbove = 4.2;
+    } 
+    // Third-person cinematic follow mode during walking/traveling
+    else {
+      const distanceBehind = 5.2;
+      const heightAbove = 2.6;
 
       const offsetX = Math.sin(characterRotation) * distanceBehind;
       const offsetZ = Math.cos(characterRotation) * distanceBehind;
 
       targetCamPos.current.set(
-        charPosVec.x - offsetX,
-        charPosVec.y + heightAbove,
-        charPosVec.z - offsetZ
+        charPosVec.current.x - offsetX,
+        charPosVec.current.y + heightAbove,
+        charPosVec.current.z - offsetZ
       );
 
-      // Target lookAt point slightly in front of character along walking direction
-      const lookAhead = 2.0;
+      const lookAhead = 1.5;
       const lookX = Math.sin(characterRotation) * lookAhead;
       const lookZ = Math.cos(characterRotation) * lookAhead;
 
       targetLookAt.current.set(
-        charPosVec.x + lookX,
-        charPosVec.y + 1.6,
-        charPosVec.z + lookZ
+        charPosVec.current.x + lookX,
+        charPosVec.current.y + 1.4,
+        charPosVec.current.z + lookZ
       );
     }
 
