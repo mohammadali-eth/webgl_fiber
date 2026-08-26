@@ -9,27 +9,27 @@ interface GameCameraProps {
   playerPosition: [number, number, number];
   mouseDelta: { x: number; y: number };
   isPointerLocked: boolean;
-  onYawChange?: (yaw: number) => void;
+  onCameraYawUpdate?: (yaw: number) => void;
 }
 
 /**
- * Third-Person Game Camera Component.
- * Smoothly follows player position, updates pitch/yaw from mouse movement,
- * and maintains look-at targeting without object allocations inside useFrame.
+ * Third-Person Game Camera Component — Phase 03 Debugged & Fixed.
+ * Consumes mouse deltas, clamps pitch angles between -30 deg and +60 deg,
+ * smoothly follows player position, and maintains look-at targeting.
  */
 export function GameCamera({
   playerPosition,
   mouseDelta,
   isPointerLocked,
-  onYawChange,
+  onCameraYawUpdate,
 }: GameCameraProps) {
   const { camera } = useThree();
 
-  // Internal Angles State
-  const yawRef = useRef<number>(0);
-  const pitchRef = useRef<number>(Math.PI / 12); // Slightly looking down by default
+  // Internal Pitch / Yaw Angles State
+  const yawRef = useRef<number>(Math.PI); // Facing North initially
+  const pitchRef = useRef<number>(Math.PI / 14); // Slightly looking down from above
 
-  // Temporary Math Vectors to avoid per-frame allocation
+  // Math Vectors to avoid per-frame allocation
   const targetCamPos = useRef(new THREE.Vector3());
   const currentCamPos = useRef(new THREE.Vector3());
   const lookTarget = useRef(new THREE.Vector3());
@@ -37,20 +37,20 @@ export function GameCamera({
   useFrame((_, delta) => {
     const dt = Math.min(delta, 0.1);
 
-    // 1. Consume Mouse Input when Pointer Lock is Active
+    // 1. Update Camera Angles from Mouse Movement
     if (isPointerLocked) {
       yawRef.current -= mouseDelta.x * CAMERA_CONFIG.MOUSE_SENSITIVITY_X;
       pitchRef.current += mouseDelta.y * CAMERA_CONFIG.MOUSE_SENSITIVITY_Y;
 
-      // Clamp Pitch within Safe Limits
+      // Strict Pitch Clamping (-30 deg to +60 deg)
       pitchRef.current = Math.max(
         CAMERA_CONFIG.MIN_PITCH,
         Math.min(CAMERA_CONFIG.MAX_PITCH, pitchRef.current)
       );
 
-      // Notify parent of updated yaw for movement calculation
-      if (onYawChange) {
-        onYawChange(yawRef.current);
+      // Pass updated yaw to parent controller for WASD orientation
+      if (onCameraYawUpdate) {
+        onCameraYawUpdate(yawRef.current);
       }
     }
 
@@ -58,7 +58,7 @@ export function GameCamera({
     const pitch = pitchRef.current;
     const [px, py, pz] = playerPosition;
 
-    // 2. Calculate Target Camera Orbit Position
+    // 2. Calculate Orbit Target Camera Position
     const cosPitch = Math.cos(pitch);
     const sinPitch = Math.sin(pitch);
     const sinYaw = Math.sin(yaw);
@@ -67,6 +67,7 @@ export function GameCamera({
     const dist = CAMERA_CONFIG.DISTANCE;
     const camHeight = CAMERA_CONFIG.HEIGHT;
 
+    // Orbit position relative to player
     const targetX = px - sinYaw * cosPitch * dist;
     const targetY = py + camHeight + sinPitch * dist;
     const targetZ = pz - cosYaw * cosPitch * dist;
@@ -82,7 +83,7 @@ export function GameCamera({
 
     camera.position.copy(currentCamPos.current);
 
-    // 4. Calculate Smooth Look-At Target (Player Upper Torso / Head)
+    // 4. Set Look-At Target (Player Upper Torso)
     lookTarget.current.set(px, py + CAMERA_CONFIG.LOOK_AT_OFFSET_Y, pz);
     camera.lookAt(lookTarget.current);
   });

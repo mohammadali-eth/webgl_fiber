@@ -1,6 +1,7 @@
 /**
- * ALIDEV Player Input Manager
- * Handles Pointer Lock API integration and keyboard input listeners.
+ * ALIDEV Player Input Manager — Phase 03 Debugged & Fixed
+ * Handles global keyboard listeners, Pointer Lock API integration,
+ * and single-frame mouse delta consumption.
  */
 
 export interface InputState {
@@ -24,8 +25,8 @@ export class PlayerInput {
     interact: false,
   };
 
-  public mouseDeltaX = 0;
-  public mouseDeltaY = 0;
+  private mouseDeltaX = 0;
+  private mouseDeltaY = 0;
   public isPointerLocked = false;
   public isDebugActive = false;
 
@@ -49,19 +50,33 @@ export class PlayerInput {
     this.onInteractCallback = cb;
   }
 
-  public requestPointerLock(element: HTMLElement) {
-    if (element && !this.isPointerLocked) {
-      element.requestPointerLock();
+  public requestPointerLock() {
+    if (typeof document !== 'undefined' && !this.isPointerLocked) {
+      // Request pointer lock directly on body / canvas
+      document.body.requestPointerLock();
     }
   }
 
   public exitPointerLock() {
-    if (document.pointerLockElement) {
+    if (typeof document !== 'undefined' && document.pointerLockElement) {
       document.exitPointerLock();
     }
   }
 
   private handleKeyDown = (event: KeyboardEvent) => {
+    // Ignore input if user is typing into an HTML input or textarea
+    if (
+      event.target instanceof HTMLInputElement ||
+      event.target instanceof HTMLTextAreaElement
+    ) {
+      return;
+    }
+
+    // Prevent default browser page scrolling for game keys
+    if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code)) {
+      event.preventDefault();
+    }
+
     switch (event.code) {
       case 'KeyW':
       case 'ArrowUp':
@@ -138,13 +153,19 @@ export class PlayerInput {
 
   private handlePointerLockChange = () => {
     this.isPointerLocked = document.pointerLockElement !== null;
+
+    if (this.isPointerLocked && typeof document !== 'undefined') {
+      // Blur active HTML button element to prevent Space bar focus steal
+      (document.activeElement as HTMLElement)?.blur();
+    }
+
     if (this.onPointerLockChangeCallback) {
       this.onPointerLockChangeCallback(this.isPointerLocked);
     }
   };
 
   /**
-   * Resets consumed frame delta inputs.
+   * Consumes and resets accumulated mouse delta. Must be called ONLY ONCE per frame!
    */
   public consumeMouseDelta(): { x: number; y: number } {
     const delta = { x: this.mouseDeltaX, y: this.mouseDeltaY };

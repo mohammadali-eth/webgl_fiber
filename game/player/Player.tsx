@@ -15,8 +15,8 @@ interface PlayerProps {
 }
 
 /**
- * Main Player Component integrating character placeholder rendering,
- * input processing, physics movement, camera follow, and interaction.
+ * Main Player Component — Phase 03 Debugged & Fixed.
+ * Integrates single-drain input processing, physics update, camera follow, and character mesh.
  */
 export function Player({ onPointerLockChange }: PlayerProps) {
   const groupRef = useRef<Group>(null!);
@@ -25,8 +25,9 @@ export function Player({ onPointerLockChange }: PlayerProps) {
   const [input] = useState(() => new PlayerInput());
   const [controller] = useState(() => new PlayerController());
 
-  // Camera Yaw state for movement calculation
+  // Camera Yaw & Frame Mouse Delta refs
   const cameraYawRef = useRef<number>(PLAYER_CONFIG.SPAWN_ROTATION_Y);
+  const frameMouseDeltaRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   // Bind Pointer Lock & Interaction Callbacks
   useEffect(() => {
@@ -46,13 +47,13 @@ export function Player({ onPointerLockChange }: PlayerProps) {
 
   // Main Frame Loop Update
   useFrame((_, delta) => {
-    // 1. Consume Mouse Delta
-    const mouseDelta = input.consumeMouseDelta();
+    // 1. Consume Mouse Delta ONCE per frame
+    frameMouseDeltaRef.current = input.consumeMouseDelta();
 
-    // 2. Update Controller Physics & Position
+    // 2. Update Physics & Controller Movement
     controller.update(delta, input.keys, cameraYawRef.current);
 
-    // 3. Update Player Mesh Transform
+    // 3. Update Character Mesh Transform
     if (groupRef.current) {
       const [px, py, pz] = controller.position;
       groupRef.current.position.set(px, py, pz);
@@ -62,7 +63,7 @@ export function Player({ onPointerLockChange }: PlayerProps) {
     // 4. Update Interaction Proximity Check
     InteractionSystem.update(controller.position);
 
-    // 5. Update Telemetry for Debug Mode
+    // 5. Update Telemetry for Debug Mode & Overlay
     PlayerState.telemetry.position = [...controller.position];
     PlayerState.telemetry.velocity = [...controller.velocity];
     PlayerState.telemetry.speed = Math.sqrt(
@@ -78,14 +79,14 @@ export function Player({ onPointerLockChange }: PlayerProps) {
       {/* Third-Person Game Camera */}
       <GameCamera
         playerPosition={controller.position}
-        mouseDelta={input.consumeMouseDelta()}
+        mouseDelta={frameMouseDeltaRef.current}
         isPointerLocked={input.isPointerLocked}
-        onYawChange={(yaw) => {
+        onCameraYawUpdate={(yaw) => {
           cameraYawRef.current = yaw;
         }}
       />
 
-      {/* Development Player Mesh Representation (Capsule + Visor) */}
+      {/* Character Representation Mesh (Capsule + Visor + Shadow Ring) */}
       <group ref={groupRef} position={PLAYER_CONFIG.SPAWN_POSITION}>
         {/* Capsule Torso */}
         <mesh castShadow receiveShadow position={[0, 0.9, 0]}>
@@ -97,7 +98,7 @@ export function Player({ onPointerLockChange }: PlayerProps) {
           />
         </mesh>
 
-        {/* Futuristic Emissive Visor Accent */}
+        {/* Glowing Emissive Visor Accent */}
         <mesh position={[0, 1.4, 0.35]}>
           <boxGeometry args={[0.5, 0.12, 0.15]} />
           <meshStandardMaterial
@@ -107,7 +108,7 @@ export function Player({ onPointerLockChange }: PlayerProps) {
           />
         </mesh>
 
-        {/* Base Shadow Ring */}
+        {/* Shadow Ground Ring */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
           <ringGeometry args={[0.2, 0.5, 16]} />
           <meshBasicMaterial color="#000000" transparent opacity={0.4} />
