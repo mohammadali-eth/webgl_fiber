@@ -2,19 +2,23 @@
 
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
-import Camera from '@/components/3d/Camera';
 import CityEnvironment from './CityEnvironment';
 import CityGrid from './CityGrid';
+import Player from '@/game/player/Player';
 
 interface CitySceneProps {
-  showControls?: boolean;
+  useOrbitControls?: boolean;
+  onPointerLockChange?: (locked: boolean) => void;
 }
 
 /**
- * Main City Scene Canvas viewport for Phase 02: City World Foundation.
- * Integrates futuristic city blockout, environment, lighting, and development inspection camera.
+ * Main City Scene Canvas viewport for Phase 03: Player Controller + Game Camera.
+ * Renders third-person explorable player character, atmospheric city lighting, and grid blockout.
  */
-export function CityScene({ showControls = true }: CitySceneProps) {
+export function CityScene({
+  useOrbitControls = false,
+  onPointerLockChange,
+}: CitySceneProps) {
   return (
     <div className="relative h-full w-full bg-[#09090b]">
       <Canvas
@@ -24,17 +28,19 @@ export function CityScene({ showControls = true }: CitySceneProps) {
           gl.setClearColor('#09090b');
         }}
       >
-        {/* Development Inspection Camera */}
-        <Camera position={[45, 35, 45]} fov={55} />
-
-        {/* City Environment & Atmospheric Lighting */}
+        {/* City Environment & Lighting */}
         <CityEnvironment />
 
         {/* Modular City Blockout Grid */}
         <CityGrid />
 
-        {/* Orbit Controls for Development Inspection */}
-        {showControls && (
+        {/* Third-Person Player Controller & Game Camera */}
+        {!useOrbitControls && (
+          <Player onPointerLockChange={onPointerLockChange} />
+        )}
+
+        {/* Debug Orbit Controls (Optional Override) */}
+        {useOrbitControls && (
           <OrbitControls
             makeDefault
             enableDamping
