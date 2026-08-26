@@ -1,63 +1,43 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import CanvasContainer from '@/components/3d/CanvasContainer';
-import ScrollProgressNav from '@/components/portfolio/ScrollProgressNav';
-import PortfolioOverlay from '@/components/portfolio/PortfolioOverlay';
-import ReducedMotionFallback from '@/components/portfolio/ReducedMotionFallback';
-import { TimelineController, TimelineState } from '@/scenes/cinematic/TimelineController';
+import React, { Suspense } from "react";
+import { Canvas } from "@react-three/fiber";
 
-/**
- * Main Page Component — ALIDEV Phase 03: Anime Cinematic Portfolio Experience.
- * Drives scroll timeline progress across 7 narrative 3D camera waypoints and editorial HTML sections.
- */
-export default function HomePage() {
-  const [timelineState, setTimelineState] = useState<TimelineState>({
-    rawProgress: 0,
-    smoothProgress: 0,
-    activeSectionIndex: 0,
-    activeSectionName: 'INTRO',
-    isReducedMotion: false,
-  });
+import { Village } from "@/components/world/Village";
+import { Lighting } from "@/components/world/Lighting";
+import { Character } from "@/components/character/Character";
+import { CameraController } from "@/components/camera/CameraController";
+import { ScrollController } from "@/components/navigation/ScrollController";
+import { AboutOverlay } from "@/components/portfolio/AboutOverlay";
+import { LoadingScreen } from "@/components/ui/LoadingScreen";
+import { DebugHUD, WaypointsVisualizer } from "@/components/ui/DebugOverlay";
+import { AudioControls } from "@/components/ui/AudioControls";
 
-  useEffect(() => {
-    const controller = TimelineController.getInstance();
-    const unsubscribe = controller.subscribe((state) => {
-      setTimelineState({ ...state });
-    });
-
-    return () => {
-      unsubscribe();
-    };
-  }, []);
-
-  const handleNavigate = (index: number) => {
-    TimelineController.getInstance().scrollToSection(index);
-  };
-
-  // Accessible Fallback for reduced motion
-  if (timelineState.isReducedMotion) {
-    return <ReducedMotionFallback />;
-  }
-
+export default function Home() {
   return (
-    <main className="relative bg-[#0e0d21] min-h-screen w-screen overflow-x-hidden selection:bg-cyan-500 selection:text-zinc-950">
-      {/* 1. 3D WebGL Cinematic Viewport (Fixed Background) */}
-      <CanvasContainer />
+    <main className="relative w-screen h-screen overflow-hidden bg-slate-950">
+      {/* 3D Canvas Layer */}
+      <Canvas
+        shadows
+        camera={{ position: [0, 6, 26], fov: 45, near: 0.1, far: 1000 }}
+        gl={{ antialias: true, alpha: false, powerPreference: "high-performance" }}
+        className="w-full h-full cursor-grab active:cursor-grabbing"
+      >
+        <Suspense fallback={null}>
+          <Lighting />
+          <Village />
+          <Character />
+          <CameraController />
+          <WaypointsVisualizer />
+        </Suspense>
+      </Canvas>
 
-      {/* 2. Top Header & Right Vertical Progress Indicator */}
-      <ScrollProgressNav
-        activeIndex={timelineState.activeSectionIndex}
-        onNavigate={handleNavigate}
-      />
-
-      {/* 3. Editorial HTML Portfolio Content (Scroll-driven) */}
-      <div className="relative z-10">
-        <PortfolioOverlay activeIndex={timelineState.activeSectionIndex} />
-      </div>
-
-      {/* 4. Scroll Track Spacer (700vh for 7 narrative sections) */}
-      <div className="h-[600vh] w-full pointer-events-none" />
+      {/* HTML Interface & Overlays */}
+      <LoadingScreen />
+      <ScrollController />
+      <AboutOverlay />
+      <DebugHUD />
+      <AudioControls />
     </main>
   );
 }

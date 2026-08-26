@@ -1,34 +1,36 @@
-import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google';
-import './globals.css';
-
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-inter',
-  display: 'swap',
-});
+import type { Metadata } from "next";
+import "./globals.css";
 
 export const metadata: Metadata = {
-  title: 'ALIDEV — 3D Portfolio',
-  description: 'Interactive 3D Personal Portfolio built with Next.js, Three.js, and React Three Fiber.',
-  keywords: ['ALIDEV', '3D Portfolio', 'Next.js', 'React Three Fiber', 'Three.js', 'Developer'],
-  authors: [{ name: 'ALIDEV' }],
-};
-
-export const viewport: Viewport = {
-  themeColor: '#09090b',
-  width: 'device-width',
-  initialScale: 1,
+  title: "Mohammad Ali — Anime Village 3D Portfolio",
+  description:
+    "Explore an interactive anime-inspired 3D village portfolio by Mohammad Ali. Move through houses to discover skills, projects, experience, and creative engineering.",
+  keywords: [
+    "3D Portfolio",
+    "Three.js",
+    "React Three Fiber",
+    "Anime Web App",
+    "Creative Web Developer",
+    "WebGL",
+    "Mohammad Ali",
+  ],
+  authors: [{ name: "Mohammad Ali" }],
+  openGraph: {
+    title: "Mohammad Ali — Anime Village 3D Portfolio",
+    description:
+      "Explore an interactive anime-inspired 3D village portfolio by Mohammad Ali.",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html lang="en" className={`${inter.variable} dark h-full`}>
-      <body className="h-full bg-background text-foreground font-sans antialiased">
+    <html lang="en" className="dark scroll-smooth">
+      <body className="antialiased min-h-screen bg-slate-950 text-slate-100 overflow-hidden font-sans select-none">
         {children}
       </body>
     </html>
