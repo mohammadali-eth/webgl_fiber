@@ -1,20 +1,21 @@
 'use client';
 
-import React, { ReactNode } from 'react';
+import dynamic from 'next/dynamic';
+import SceneLoader from './SceneLoader';
 
-interface CanvasContainerProps {
-  children?: ReactNode;
-}
+// Dynamically import 3D Scene with SSR disabled to ensure browser WebGL safety
+const DynamicScene = dynamic(() => import('./Scene'), {
+  ssr: false,
+  loading: () => <SceneLoader />,
+});
 
 /**
- * Canvas Container component prepared for React Three Fiber canvas integration.
- * Structured with explicit client-side boundary to prevent Next.js SSR window/WebGL errors.
+ * Client Canvas Container ensuring proper Next.js client-side WebGL rendering.
  */
-export function CanvasContainer({ children }: CanvasContainerProps) {
+export function CanvasContainer() {
   return (
-    <div className="relative h-full w-full">
-      {/* Three.js R3F Canvas and 3D environment will be mounted here in future implementation */}
-      {children}
+    <div className="absolute inset-0 h-full w-full overflow-hidden">
+      <DynamicScene />
     </div>
   );
 }

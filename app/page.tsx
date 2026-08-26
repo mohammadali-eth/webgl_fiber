@@ -1,23 +1,19 @@
 import React from 'react';
+import CanvasContainer from '@/components/3d/CanvasContainer';
+import MinimalOverlay from '@/components/layout/MinimalOverlay';
 
 /**
- * Initial Landing Page confirming project setup.
- * Simple, elegant placeholder before Phase 2 (3D City implementation).
+ * Main Page integrating full-screen 3D Canvas rendering foundation
+ * with minimal HUD layout overlay.
  */
 export default function HomePage() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-6 text-center">
-      <div className="space-y-4">
-        <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white">
-          ALIDEV
-        </h1>
-        <p className="text-xl sm:text-2xl font-medium text-zinc-400">
-          3D Portfolio
-        </p>
-        <span className="inline-block rounded-full bg-zinc-800 px-4 py-1.5 text-sm font-semibold text-zinc-300 border border-zinc-700">
-          Coming Soon
-        </span>
-      </div>
+    <main className="relative h-screen w-screen overflow-hidden bg-[#09090b]">
+      {/* 3D Scene Viewport */}
+      <CanvasContainer />
+
+      {/* Minimal HUD Overlay */}
+      <MinimalOverlay />
     </main>
   );
 }
